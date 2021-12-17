@@ -64,7 +64,7 @@ export default {
       days: null,
 
       peak_grp: null,
-      day_length: 10, // frame duration in milliseconds
+      day_length: 1, // frame duration in milliseconds
       current_time: 0,
       start: 0,
       n_days: null,
@@ -112,7 +112,7 @@ export default {
         let promises = [
         self.d3.csv(self.publicPath + "quant_peaks.csv",  this.d3.autotype), // used to draw legend shapes - color palette needs to be pulled out
         self.d3.csv("https://labs.waterdata.usgs.gov/visualizations/data/gw-conditions-wy2020.csv",  this.d3.autotype),
-        self.d3.csv("https://labs.waterdata.usgs.gov/visualizations/data/gw-conditions-site-coords.csv",  this.d3.autotype), 
+        self.d3.csv("https://labs.waterdata.usgs.gov/visualizations/data/gw-conditions-site-coords.csv",  this.d3.autotype), // TODO: set by R?
         self.d3.csv("https://labs.waterdata.usgs.gov/visualizations/data/gw-conditions-daily-proportions.csv",  this.d3.autotype),
         self.d3.csv("https://labs.waterdata.usgs.gov/visualizations/data/gw-conditions-time-labels.csv",  this.d3.autotype),
         ];
@@ -145,6 +145,7 @@ export default {
         // R pipeline pulls out each month and the year for time labels
         // TODO: incorporate additional event annotations 
         var time_labels = data[4]; 
+        //console.log(time_labels)
 
         // days in sequence
         var day_seq = this.date_peaks.columns
@@ -186,8 +187,8 @@ export default {
         this.n_days = this.days.length
      
         // set up scales
-        this.setScales(); // axes, color, and line drawing fnu
-        this.makeLegend();
+        this.setScales(); // axes, color, and line drawing fun
+        this.makeLegend(); // draws legend on 
 
         // draw the map
         var map_svg = this.d3.select("svg.map")
@@ -199,18 +200,16 @@ export default {
         this.addButtons(time_container, time_labels);
 
         // control animation
-        this.animateLine(this.start);
-        this.animateGWL(this.start);
+       // this.animateLine(this.start);
+       // this.animateGWL(this.start);
+
         var play_container = this.d3.select("#play-container");
         this.playButton(play_container, "200","50");
+        console.log(this.days)
+
+       this.initTime(time_labels)
 
         
-      },
-      createPanel(month) {
-        var tl = new TimelineMax();
-        tl.to("tl_" + month)
-        // add rest of this
-        return tl;
       },
       addButtons(time_container, time_labels){
         const self = this;
@@ -548,26 +547,98 @@ export default {
         .attr("r", 3)
         .attr("fill", this.button_color)
       },
-      initTime(){
+      createPanel(month) {
+        var tl = new TimelineMax();
+        tl.to("tl_" + month)
+        // add rest of this
+        return tl;
+      },
+      initTime(time_events){
+        const self = this
+
+        var months = time_events.map(function(d) { return d['day_seq']})
+        var month_labels = time_events.map(function(d) { return d['month_label']})
+        //console.log(months) // use to tag timeline for rewind
+
+        // create a timeline for each month
+
         // nested timelines for playback control
         // broken up by month and tagged for user control
-        var tl_jan = new TimelineMax(); // TimelineMax permits repeating animation
-        var tl_feb = new TimelineMax();
-        var tl_mar = new TimelineMax();
-        var tl_apr = new TimelineMax();
-        var tl_may = new TimelineMax();
-        var tl_jun = new TimelineMax();
-        var tl_jul = new TimelineMax();
-        var tl_aug = new TimelineMax();
-        var tl_sep = new TimelineMax()
-        var tl_oct = new TimelineMax()
-        var tl_nov = new TimelineMax()
-        var tl_dec = new TimelineMax()
+        /* var tl_jan = this.createPanel(months[0]); // TimelineMax permits repeating animation
+        var tl_feb = this.createPanel(months[1]);
+        var tl_mar = this.createPanel(months[2]);
+        var tl_apr = this.createPanel(months[3]);
+        var tl_may = this.createPanel(months[4]);
+        var tl_jun = this.createPanel(months[5]);
+        var tl_jul = this.createPanel(months[6]);
+        var tl_aug = this.createPanel(months[7]);
+        var tl_sep = this.createPanel(months[8]);
+        var tl_oct = this.createPanel(months[9]);
+        var tl_nov = this.createPanel(months[10]);
+        var tl_dec = this.createPanel(months[11]); */
 
         // add to parent timeline
         // this timeline is used to set timing, duration, speed, stop/start, and keep everythign synchronized
-        var master = new TimelineMax();
-        master.add(tl_jan)
+        var master = new TimelineMax({repeat: -1, repeatDelay: 1}); // {repeat: -1, repeatDelay: 1}
+
+        // hiliter
+        var hilite = this.d3.select(".hilite")
+        console.log(month_labels[1])
+
+        // for each month, move the hilite bar 1 step forward
+        function monthLine(end){
+          var tl = new TimelineMax();
+          tl
+          //.from(".hilite", {x: self.xScale(months[end-1])-30, duration: 0}, ">")
+          .to(".hilite",5, {x: self.xScale(months[end])-30, ease: "linear"}, ">")
+
+          return tl;
+      
+
+        }
+/*         master
+        .from(".hilite", {x: self.xScale(months[0]), ease: "linear", duration:0})
+        .to(".hilite", this.day_length, {x: self.xScale(months[1])-20, ease: "linear"})
+        .to(".hilite", this.day_length, {x: self.xScale(months[2])-20, ease: "linear"})
+        .to(".hilite", this.day_length, {x: self.xScale(months[3])-20, ease: "linear"})
+        .to(".hilite", this.day_length, {x: self.xScale(months[4])-20, ease: "linear"})
+        .to(".hilite", this.day_length, {x: self.xScale(months[5])-20, ease: "linear"})
+        .to(".hilite", this.day_length, {x: self.xScale(months[6])-20, ease: "linear"})
+        .to(".hilite", this.day_length, {x: self.xScale(months[7])-20, ease: "linear"})
+        .to(".hilite", this.day_length, {x: self.xScale(months[8])-20, ease: "linear"})
+        .to(".hilite", this.day_length, {x: self.xScale(months[9])-20, ease: "linear"})
+        .to(".hilite", this.day_length, {x: self.xScale(months[10])-20, ease: "linear"})
+        .to(".hilite", this.day_length, {x: self.xScale(months[11])-20, ease: "linear"})
+        .to(".hilite", this.day_length, {x: self.xScale(months[12])-20, ease: "linear"}) */
+
+
+        master
+        .from(".hilite", {x: self.xScale(months[0])-30, ease: "linear"})
+          .add(".hilite", monthLine(1))
+          .add(".hilite", monthLine(2))
+          .add(".hilite", monthLine(3))
+         /*  .add(".hilite", monthLine(4))
+          .add(".hilite", monthLine(5))
+          .add(".hilite", monthLine(6))
+          .add(".hilite", monthLine(7))
+          .add(".hilite", monthLine(8))
+          .add(".hilite", monthLine(9)) */
+          .add(".hilite", monthLine(10))
+          .add(".hilite", monthLine(11))
+          .add(".hilite", monthLine(12))
+
+           master.play()
+
+        var tl_peaks = new TimelineMax();
+        tl_peaks
+        
+
+ 
+
+        // add months
+        
+       /*  master
+        .add(tl_jan)
         .add(tl_feb)
         .add(tl_mar)
         .add(tl_apr)
@@ -578,7 +649,7 @@ export default {
         .add(tl_sep)
         .add(tl_oct)
         .add(tl_nov)
-        .add(tl_dec) 
+        .add(tl_dec)  */
 
       },
       animateCharts(){
@@ -887,5 +958,7 @@ $dark: #323333;
 text.tick {
   font-size: 1rem;
 
+}
+#map_gwl path {
 }
 </style>
